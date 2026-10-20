@@ -21,6 +21,12 @@ from src.run_eval import (
     run_evaluation,
 )
 from src.scorecard import build_summary, load_rlhf_stats, render_chart
+from ui.charts import (
+    build_confusion_heatmap,
+    build_domain_chart,
+    build_language_chart,
+    build_latency_accuracy_chart,
+)
 from ui.components import render_kpi_card, render_response_box, status_badge
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -125,6 +131,18 @@ def render_scorecard_tab(runs_df: pd.DataFrame) -> None:
 
     st.markdown("#### Model Comparison")
     st.dataframe(summary, use_container_width=True, hide_index=True)
+
+    v1_left, v1_right = st.columns(2, gap="large")
+    with v1_left:
+        st.altair_chart(build_language_chart(runs_df), use_container_width=True)
+    with v1_right:
+        st.altair_chart(build_domain_chart(runs_df), use_container_width=True)
+
+    v2_left, v2_right = st.columns(2, gap="large")
+    with v2_left:
+        st.altair_chart(build_confusion_heatmap(runs_df), use_container_width=True)
+    with v2_right:
+        st.altair_chart(build_latency_accuracy_chart(runs_df), use_container_width=True)
 
     st.markdown("#### Accuracy by Attack Category (%)")
     pivot = (
