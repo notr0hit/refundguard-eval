@@ -117,14 +117,15 @@ def build_latency_accuracy_chart(df: pd.DataFrame) -> alt.Chart:
         )
         .assign(short_model=lambda d: d["model"].str.split("/").str[-1])
     )
-    min_acc = max(0, float(lat_df["accuracy"].min()) - 8)
+    min_acc = max(0, float(lat_df["accuracy"].min()) - 6)
+    max_lat = float(lat_df["median_ms"].max()) * 1.12
     points = (
         alt.Chart(lat_df)
-        .mark_circle(size=160, opacity=0.9)
+        .mark_circle(size=180, opacity=0.92)
         .encode(
-            x=alt.X("median_ms:Q", title="Median Latency (ms)"),
+            x=alt.X("median_ms:Q", title="Median Latency (ms)", scale=alt.Scale(domain=[0, max_lat])),
             y=alt.Y("accuracy:Q", title="Decision Accuracy (%)", scale=alt.Scale(domain=[min_acc, 102])),
-            color=alt.Color("short_model:N", scale=alt.Scale(range=PALETTE), legend=None),
+            color=alt.Color("short_model:N", scale=alt.Scale(range=PALETTE)),
             tooltip=[
                 "model:N",
                 alt.Tooltip("accuracy:Q", title="Accuracy (%)"),
@@ -133,9 +134,5 @@ def build_latency_accuracy_chart(df: pd.DataFrame) -> alt.Chart:
             ],
         )
     )
-    labels = (
-        alt.Chart(lat_df)
-        .mark_text(align="left", dx=10, dy=-4, fontSize=11, color="#0F172A")
-        .encode(x="median_ms:Q", y="accuracy:Q", text="short_model:N")
-    )
-    return _base_config((points + labels).properties(height=260, title="Accuracy vs. Median Latency"))
+    return _base_config(points.properties(height=260, title="Accuracy vs. Median Latency"))
+
