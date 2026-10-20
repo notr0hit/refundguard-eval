@@ -66,65 +66,88 @@ def build_summary(df: pd.DataFrame, rlhf: dict[str, dict[str, float]]) -> pd.Dat
     return pd.DataFrame(rows).sort_values("Decision Acc (%)", ascending=False)
 
 
+ATTACK_LABELS = {
+    "boundary_escalation": "Boundary Escalation",
+    "fake_policy": "Fake Policy",
+    "prompt_injection": "Prompt Injection",
+    "sycophancy_pressure": "Sycophancy Pressure",
+    "valid_exception": "Valid Exception",
+}
+
+
 def render_chart(df: pd.DataFrame, summary: pd.DataFrame) -> None:
-    """Render a clean, editorial 2-panel scorecard chart to results/scorecard.png."""
+    """Render a clean, publication-grade 2-panel scorecard chart to results/scorecard.png."""
+    import numpy as np
+
     plt.rcParams.update({
         "font.sans-serif": ["DejaVu Sans", "Arial", "Helvetica"],
         "axes.edgecolor": "#CBD5E1",
         "axes.linewidth": 0.8,
     })
-    fig, axes = plt.subplots(1, 2, figsize=(13.5, 5.2), facecolor="#FFFFFF")
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5.2), facecolor="#FFFFFF", gridspec_kw={"width_ratios": [1.05, 1.15]})
 
-    # Panel 1: Decision Accuracy vs Contradiction Rate by Model
-    models = summary["Model"].tolist()
-    x = list(range(len(models)))
-    width = 0.34
-    acc_vals = summary["Decision Acc (%)"].tolist()
-    contra_vals = summary["Contradiction (%)"].tolist()
+    # Panel 1: Horizontal bar chart (Decision Acc, Clause Hit, Contradiction) per Model
+    models = summary["Model"].tolist()[::-1]
+    y = np.arange(len(models))
+    h = 0.25
 
-    bars1 = axes[0].bar([i - width / 2 for i in x], acc_vals, width, label="Decision Accuracy (%)", color="#0F172A", zorder=3)
-    bars2 = axes[0].bar([i + width / 2 for i in x], contra_vals, width, label="Contradiction Rate (%)", color="#DC2626", zorder=3)
-    for bar in list(bars1) + list(bars2):
-        h = bar.get_height()
-        axes[0].text(bar.get_x() + bar.get_width() / 2, h + 2.2, f"{h:.0f}%", ha="center", va="bottom", fontsize=8.5, color="#334155")
+    acc_vals = summary["Decision Acc (%)"].tolist()[::-1]
+    clause_vals = summary["Clause Hit (%)"].tolist()[::-1]
+    contra_vals = summary["Contradiction (%)"].tolist()[::-1]
 
-    axes[0].set_xticks(x)
-    axes[0].set_xticklabels(models, fontsize=9, color="#1E293B")
-    axes[0].set_ylim(0, 118)
-    axes[0].set_ylabel("Percentage (%)", fontsize=9.5, color="#475569")
-    axes[0].set_title("Policy Accuracy vs. Contradiction Rate", fontsize=11, fontweight="bold", color="#0F172A", pad=26)
-    axes[0].grid(axis="y", linestyle="--", alpha=0.45, color="#CBD5E1", zorder=0)
+    b1 = axes[0].barh(y + h, acc_vals, h, label="Decision Acc (%)", color="#0F172A", zorder=3)
+    b2 = axes[0].barh(y, clause_vals, h, label="Clause Hit (%)", color="#2563EB", zorder=3)
+    b3 = axes[0].barh(y - h, contra_vals, h, label="Contradiction (%)", color="#DC2626", zorder=3)
+
+    for bar in list(b1) + list(b2) + list(b3):
+        w = bar.get_width()
+        axes[0].text(w + 1.5, bar.get_y() + bar.get_height() / 2, f"{w:.1f}%", va="center", ha="left", fontsize=8, color="#334155")
+
+    axes[0].set_yticks(y)
+    axes[0].set_yticklabels(models, fontsize=9, color="#0F172A")
+    axes[0].set_xlim(0, 118)
+    axes[0].set_xlabel("Percentage (%)", fontsize=9, color="#475569")
+    axes[0].set_title("Model Compliance & Contradiction", fontsize=11, fontweight="bold", color="#0F172A", pad=34)
+    axes[0].grid(axis="x", linestyle="--", alpha=0.45, color="#CBD5E1", zorder=0)
     axes[0].spines["top"].set_visible(False)
     axes[0].spines["right"].set_visible(False)
-    axes[0].legend(loc="upper left", bbox_to_anchor=(0, 1.11), ncol=2, frameon=False, fontsize=8.5)
+    axes[0].legend(loc="upper left", bbox_to_anchor=(0, 1.09), ncol=3, frameon=False, fontsize=8)
 
-    # Panel 2: Accuracy by Attack Type across Models
+    # Panel 2: Annotated Heatmap of Accuracy by Attack Category x Model
     pivot = (
         df.pivot_table(index="attack_type", columns="model", values="decision_match", aggfunc="mean")
         * 100
     )
-    palette = ["#0F172A", "#2563EB", "#64748B", "#0EA5E9"]
-    pivot.plot(
-        kind="bar",
-        ax=axes[1],
-        color=palette[: len(pivot.columns)],
-        width=0.68,
-        zorder=3,
-    )
-    axes[1].set_ylim(0, 118)
-    axes[1].set_ylabel("Decision Accuracy (%)", fontsize=9.5, color="#475569")
-    axes[1].set_xlabel("")
-    axes[1].set_title("Accuracy by Attack Category", fontsize=11, fontweight="bold", color="#0F172A", pad=26)
-    axes[1].tick_params(axis="x", rotation=0, labelsize=9, colors="#1E293B")
-    axes[1].grid(axis="y", linestyle="--", alpha=0.45, color="#CBD5E1", zorder=0)
-    axes[1].spines["top"].set_visible(False)
-    axes[1].spines["right"].set_visible(False)
-    axes[1].legend(loc="upper left", bbox_to_anchor=(0, 1.11), ncol=len(pivot.columns), frameon=False, fontsize=8)
+    row_labels = [ATTACK_LABELS.get(k, k) for k in pivot.index]
+    col_labels = [c.split("/")[-1] for c in pivot.columns]
+    matrix = pivot.to_numpy(dtype=float)
 
-    fig.suptitle("RefundGuard-Eval Benchmark Scorecard", fontsize=13.5, fontweight="bold", color="#0F172A", y=0.99)
-    plt.tight_layout(rect=[0, 0, 1, 0.94])
+    cmap = plt.cm.Blues
+    masked = np.ma.masked_invalid(matrix)
+    cmap.set_bad(color="#F1F5F9")
+    axes[1].imshow(masked, cmap=cmap, vmin=40, vmax=100, aspect="auto")
+
+    for i in range(matrix.shape[0]):
+        for j in range(matrix.shape[1]):
+            val = matrix[i, j]
+            if np.isnan(val):
+                txt, col = "—", "#94A3B8"
+            else:
+                txt = f"{val:.0f}%"
+                col = "#FFFFFF" if val >= 80 else "#0F172A"
+            axes[1].text(j, i, txt, ha="center", va="center", fontsize=9.5, fontweight="bold", color=col)
+
+    axes[1].set_xticks(np.arange(len(col_labels)))
+    axes[1].set_xticklabels(col_labels, fontsize=9, color="#0F172A", rotation=12, ha="right")
+    axes[1].set_yticks(np.arange(len(row_labels)))
+    axes[1].set_yticklabels(row_labels, fontsize=9, color="#0F172A")
+    axes[1].set_title("Decision Accuracy by Attack Category", fontsize=11, fontweight="bold", color="#0F172A", pad=14)
+    for spine in axes[1].spines.values():
+        spine.set_edgecolor("#E2E8F0")
+
+    plt.tight_layout()
     CHART_PATH.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(CHART_PATH, dpi=200, facecolor="#FFFFFF")
+    plt.savefig(CHART_PATH, dpi=200, facecolor="#FFFFFF", bbox_inches="tight")
     plt.close(fig)
 
 
