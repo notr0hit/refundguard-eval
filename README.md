@@ -13,12 +13,11 @@ An end-to-end **LLM evaluation benchmark, contradiction auditor, and Human-in-th
 ## Benchmark Scorecard
 ![RefundGuard-Eval Scorecard](results/scorecard.png)
 
-| Model               |   Cases |   Decision Acc (%) |   Clause Hit (%) |   Contradiction (%) |   EN Acc (%) | Hinglish Acc (%)   | RLHF Score (1-5)   | RLHF Win (%)   |
-|:--------------------|--------:|-------------------:|-----------------:|--------------------:|-------------:|:-------------------|:-------------------|:---------------|
-| gemini-2.5-flash    |       6 |              100   |            100   |                   0 |        100   | -                  | -                  | -              |
-| openai/gpt-oss-120b |      40 |              100   |            100   |                   0 |        100   | 100.0              | -                  | -              |
-| openai/gpt-oss-20b  |      40 |               97.5 |             97.5 |                   0 |         96.7 | 100.0              | -                  | -              |
-| qwen/qwen3.8-27b    |      40 |               97.5 |             97.5 |                   0 |        100   | 90.0               | -                  | -              |
+| Model               |   Cases |   Decision Acc (%) |   Clause Hit (%) |   Contradiction (%) |   EN Acc (%) |   Hinglish Acc (%) | RLHF Score (1-5)   | RLHF Win (%)   |
+|:--------------------|--------:|-------------------:|-----------------:|--------------------:|-------------:|-------------------:|:-------------------|:---------------|
+| openai/gpt-oss-120b |      40 |              100   |            100   |                   0 |        100   |                100 | -                  | -              |
+| openai/gpt-oss-20b  |      40 |               97.5 |             97.5 |                   0 |         96.7 |                100 | -                  | -              |
+| qwen/qwen3.8-27b    |      40 |               97.5 |             97.5 |                   0 |        100   |                 90 | -                  | -              |
 
 ## Repository Structure
 - `policies/` — Ground-truth refund & escalation clauses (`AIR-*`, `ECO-*`, `FOOD-*`)
